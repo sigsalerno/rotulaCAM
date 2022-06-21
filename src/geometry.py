@@ -1,7 +1,7 @@
 from Geometry3D import Point, ConvexPolygon, intersection, Segment
 from common import X, Y, Z
 from numpy import cross, subtract
-from math import atan, atan2, pi, isnan
+from math import atan2, pi, isnan
 
 class Geometry: 
 
@@ -14,12 +14,14 @@ class Geometry:
 
         self.polygons = []
         
+        #Calculate the mesh global size
         self._calculate_size()
 
+        #Import the vectors
         for t in self.mesh.vectors:
             try:
                 self.polygons.append(
-                    self._polygon_from_three_points((
+                    ConvexPolygon((
                         self._point_from_array(t[0]),
                         self._point_from_array(t[1]),
                         self._point_from_array(t[2])
@@ -28,7 +30,7 @@ class Geometry:
             except ZeroDivisionError:
                 pass
 
-
+    #Here we repositione the mesh in the center of the plane. This should not be automatic
     def _point_from_array(self, point_array):
         arr = [
             point_array.astype('float')[X] - self.size['center'][X],
@@ -38,14 +40,12 @@ class Geometry:
 
         return Point(arr)
 
-    def _polygon_from_three_points(self, points):
-        return ConvexPolygon(points)
-
 
     """
-        Get the 2 extreme vertices of the object
+        Get the 2 extreme vertices of the object, calculate the size
     """
     def _calculate_size(self):
+
         self.size = {'min': [1000000000,1000000000,1000000000], 'max': [0,0,0], 'abs': [0,0,0], 'center': [0,0,0] }
 
         for pol in self.mesh.vectors:
@@ -70,6 +70,7 @@ class Geometry:
 
 class Slice:
     
+    #Calculate the perpendicular of the polygon, for the tool
     def _tool_angle(self, polygon):
 
         #Translate the first point as the origin 
@@ -78,9 +79,9 @@ class Slice:
 
         c = cross(v1, v2)
         
-        A = atan(c[X]/c[Z]) * (180/pi)
-        B = atan(c[Y]/c[Z]) * (180/pi)
-        C = atan(c[X]/c[Y]) * (180/pi) + 90
+        A = atan2(c[X], c[Z]) * (180/pi)
+        B = atan2(c[Y], c[Z]) * (180/pi)
+        C = atan2(c[X], c[Y]) * (180/pi) + 90
 
         if isnan(A):
             A = 0 
@@ -109,12 +110,9 @@ class Slice:
         self.points = []
 
         def genpoint(point, polygon):
-            #try:
-            #print(point)
+            #The order will give the path to our adventurer
+            #Is clockwise
             order = atan2(point[X], point[Y]) 
-            #except ZeroDivisionError:
-            #    order = 0
-            #order = 0
             return {'point': point, 'angle': self._tool_angle(polygon), 'order': order}
 
         for polygon in self.geometry.polygons:
@@ -128,9 +126,4 @@ class Slice:
 
         self.points.sort(key = lambda x: x['order'])
 
-            
-
-    
-                
         
-        #print(self.cross)

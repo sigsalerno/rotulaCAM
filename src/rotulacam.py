@@ -1,7 +1,5 @@
-from matplotlib.patches import Polygon
-import numpy
 from stl import mesh
-from Geometry3D import Point, ConvexPolygon, Renderer, Segment, intersection, xy_plane
+from Geometry3D import Renderer
 from common import X, Y, Z
 from geometry import Geometry, Slice
 import parameters 
@@ -25,11 +23,10 @@ class RotulaCAM:
         slice_number = round( height / parameters.TOOL_DIAMETER ) 
 
         levels = []
-        print(height, slice_number)
+        
         for z in range(1, slice_number):
             levels.append(round((height/slice_number) * z, 1))
 
-        print(levels)
         self.slices = []
 
         for z in levels:
@@ -45,27 +42,24 @@ class RotulaCAM:
         for slice in self.slices:
             for point in slice.points:
                 p = point['point']
-                f.write("G1 X%f Y%f Z%f B%f C%f\n" % (p[X], p[Y], p[Z], point['angle'][Y], point['angle'][Z]))
+                f.write("G1 X%f Y%f Z%f B%f C%f\n F%f" % (p[X], p[Y], p[Z], point['angle'][Y], point['angle'][Z], parameters.TOOL_FEED))
                 
         f.write('M30\n')
         f.close()
 
 if __name__ == "__main__":
 
-    print("Start")
-
+    #Init rotulacam
     cam = RotulaCAM()
 
+    #Load the stl
     cam.load_stl('../Testobj.stl')
+
+    #Slice the model 
     cam.slice()
-    #cam.interpolate()
-    
+
+    #Generate gcode
     cam.gcode()
-
-    #print(cam.geometry.size)
-
-
-
 
     #Some rendering 
     r = Renderer()
@@ -75,7 +69,6 @@ if __name__ == "__main__":
 
     for slice in cam.slices:
         for inter in slice.points:
-            #print(inter)
             r.add((inter['point'],'b',2),normal_length = 0)
         
 
