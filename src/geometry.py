@@ -1,7 +1,7 @@
 from Geometry3D import Point, ConvexPolygon, intersection, Segment
 from common import X, Y, Z
-from numpy import cross 
-from math import atan, pi
+from numpy import cross, subtract
+from math import atan, atan2, pi, isnan
 
 class Geometry: 
 
@@ -20,9 +20,9 @@ class Geometry:
             try:
                 self.polygons.append(
                     self._polygon_from_three_points((
-                        self._point_from_array(t[X]),
-                        self._point_from_array(t[Y]),
-                        self._point_from_array(t[Z])
+                        self._point_from_array(t[0]),
+                        self._point_from_array(t[1]),
+                        self._point_from_array(t[2])
                     ))
                     )
             except ZeroDivisionError:
@@ -30,7 +30,13 @@ class Geometry:
 
 
     def _point_from_array(self, point_array):
-        return Point(*point_array.astype('float'))
+        arr = [
+            point_array.astype('float')[X] - self.size['center'][X],
+            point_array.astype('float')[Y] - self.size['center'][Y],
+            point_array.astype('float')[Z] 
+        ]
+
+        return Point(arr)
 
     def _polygon_from_three_points(self, points):
         return ConvexPolygon(points)
@@ -40,7 +46,7 @@ class Geometry:
         Get the 2 extreme vertices of the object
     """
     def _calculate_size(self):
-        self.size = {'min': [1000000000,1000000000,1000000000], 'max': [0,0,0], 'abs': [0,0,0] }
+        self.size = {'min': [1000000000,1000000000,1000000000], 'max': [0,0,0], 'abs': [0,0,0], 'center': [0,0,0] }
 
         for pol in self.mesh.vectors:
             for point_array in pol:
@@ -53,6 +59,9 @@ class Geometry:
 
         for i in (X, Y, Z):
             self.size['abs'][i] = abs(self.size['max'][i] - self.size['min'][i])
+            self.size['center'][i] = self.size['abs'][i]/2
+            self.size['max'][i] = self.size['max'][i] - self.size['center'][i]
+            self.size['min'][i] = self.size['min'][i] - self.size['center'][i]
             
 
  
@@ -62,23 +71,26 @@ class Geometry:
 class Slice:
     
     def _tool_angle(self, polygon):
-        c = cross((list(polygon.points[0]), list(polygon.points[1])) , (list(polygon.points[0]), list(polygon.points[2])))
-        #p0 = Point(c[0])
-        p1 = Point (c[1])
-        #print(c)
-        A = atan(c[1][Y]/c[1][Z]) * (180/pi)
-        B = atan(c[1][X]/c[1][Z]) * (180/pi)
-        C = atan(c[1][X]/c[1][Y]) * (180/pi)
 
+        #Translate the first point as the origin 
+        v1 = subtract(list(polygon.points[1]), list(polygon.points[0]))
+        v2 = subtract(list(polygon.points[2]), list(polygon.points[0]))
+
+        c = cross(v1, v2)
+        
+        A = atan(c[X]/c[Z]) * (180/pi)
+        B = atan(c[Y]/c[Z]) * (180/pi)
+        C = atan(c[X]/c[Y]) * (180/pi) + 90
+
+        if isnan(A):
+            A = 0 
+        if isnan(B):
+            B = 0 
+        if isnan(C):
+            C = 0 
+        
         return A, B, C
-        """
-        try:
-            self.cross.append(
-                Segment(p0, p1)
-            )
-        except ValueError:
-            pass
-        """
+        
 
     def __init__(self, geometry, z):
 
@@ -94,17 +106,31 @@ class Slice:
         ))
 
         #Array of intercepting polygon 
-        self.intercept = []
+        self.points = []
+
+        def genpoint(point, polygon):
+            #try:
+            #print(point)
+            order = atan2(point[X], point[Y]) 
+            #except ZeroDivisionError:
+            #    order = 0
+            #order = 0
+            return {'point': point, 'angle': self._tool_angle(polygon), 'order': order}
 
         for polygon in self.geometry.polygons:
             i = intersection(self.plane, polygon)
             if i is not None:
+                if type(i) == Segment:
+                    self.points.append(genpoint(i.start_point, polygon))
+                    self.points.append(genpoint(i.end_point, polygon))
+                else:
+                    self.points.append(genpoint(i, polygon))
 
+        self.points.sort(key = lambda x: x['order'])
 
+            
 
-
-                self.intercept.append({'segment': i, 'angle': self._tool_angle(polygon)})
-
+    
                 
         
         #print(self.cross)

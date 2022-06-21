@@ -43,14 +43,10 @@ class RotulaCAM:
         #f.write("G0Z%s\n" % (SAFE_HEIGHT))
 
         for slice in self.slices:
-            for segment in slice.intercept:
-                try:
-                    print(dir(segment['segment']))
-                    for p in segment['segment']:
-                        f.write("G1 X%f Y%f Z%f B%f C%f\n" % (p[X], p[Y], p[Z], segment['angle'][Y], segment['angle'][Z]))
-                except TypeError as e:
-                    print("error")
-                    print(e)
+            for point in slice.points:
+                p = point['point']
+                f.write("G1 X%f Y%f Z%f B%f C%f\n" % (p[X], p[Y], p[Z], point['angle'][Y], point['angle'][Z]))
+                
         f.write('M30\n')
         f.close()
 
@@ -66,7 +62,7 @@ if __name__ == "__main__":
     
     cam.gcode()
 
-    print(cam.geometry.size)
+    #print(cam.geometry.size)
 
 
 
@@ -78,9 +74,9 @@ if __name__ == "__main__":
         r.add((polygon,'r',1),normal_length = 0)
 
     for slice in cam.slices:
-        for inter in slice.intercept:
+        for inter in slice.points:
             #print(inter)
-            r.add((inter['segment'],'b',2),normal_length = 0)
+            r.add((inter['point'],'b',2),normal_length = 0)
         
 
     #r.add((cam.plane,'b',1),normal_length = 0)
