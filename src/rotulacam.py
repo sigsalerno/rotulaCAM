@@ -63,14 +63,18 @@ if __name__ == "__main__":
 
     #Some rendering 
     r = Renderer()
-
+    
     for polygon in cam.geometry.polygons:
         r.add((polygon,'r',1),normal_length = 0)
 
     for slice in cam.slices:
         for inter in slice.points:
             r.add((inter['point'],'b',2),normal_length = 0)
+            r.add((inter['segment'],'g',2),normal_length = 0)
         
+    #for slice in cam.slices:
+    #    for inter in slice.vectors:
+    #        r.add((inter,'g',2),normal_length = 0)
 
     #r.add((cam.plane,'b',1),normal_length = 0)
     r.show()

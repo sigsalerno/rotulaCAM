@@ -1,8 +1,7 @@
 from Geometry3D import Point, ConvexPolygon, intersection, Segment
 from common import X, Y, Z
-from numpy import cross, subtract
-from math import atan2, pi, isnan
-
+from numpy import cross, subtract, add, divide, linalg
+from math import atan2, pi, asin
 class Geometry: 
 
     """
@@ -70,25 +69,25 @@ class Geometry:
 
 class Slice:
     
-    #Calculate the perpendicular of the polygon, for the tool
-    def _tool_angle(self, polygon):
-
+    #Return everytime the same length (1), as we don't need the magnitude
+    def _tool_vector(self, polygon):
         #Translate the first point as the origin 
         v1 = subtract(list(polygon.points[1]), list(polygon.points[0]))
         v2 = subtract(list(polygon.points[2]), list(polygon.points[0]))
 
-        c = cross(v1, v2)
+        cv = cross(v1, v2)
         
-        A = atan2(c[X], c[Z]) * (180/pi)
-        B = atan2(c[Y], c[Z]) * (180/pi)
-        C = atan2(c[X], c[Y]) * (180/pi) + 90
+        scv =  divide(cv, linalg.norm(cv))
+        return scv
 
-        if isnan(A):
-            A = 0 
-        if isnan(B):
-            B = 0 
-        if isnan(C):
-            C = 0 
+    #Calculate the perpendicular of the polygon, for the tool
+    def _tool_angle(self, polygon):
+
+        scv = self._tool_vector(polygon)
+
+        A = asin(scv[X]) * (180/pi)
+        B = asin(scv[Y]) * (180/pi)
+        C = asin(scv[Z]) * (180/pi)
         
         return A, B, C
         
@@ -113,7 +112,13 @@ class Slice:
             #The order will give the path to our adventurer
             #Is clockwise
             order = atan2(point[X], point[Y]) 
-            return {'point': point, 'angle': self._tool_angle(polygon), 'order': order}
+
+            return {
+                'point': point, 
+                'angle': self._tool_angle(polygon), 
+                'order': order,
+                'segment': Segment(point, Point(add(tuple(point), self._tool_vector(polygon))))
+                }
 
         for polygon in self.geometry.polygons:
             i = intersection(self.plane, polygon)
@@ -125,5 +130,21 @@ class Slice:
                     self.points.append(genpoint(i, polygon))
 
         self.points.sort(key = lambda x: x['order'])
+
+"""
+        self.vectors = []
+
+        for point in self.points:
+
+            self.vectors.append(
+                Segment(
+                    Point(point['point']),
+                    Point(add(
+                        tuple(point['point']), 
+                        (tan(point['angle'][X]), tan(point['angle'][Y]), tan(point['angle'][Z]))
+                    ))
+                )
+            )
+"""
 
         
